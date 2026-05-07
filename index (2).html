@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Module 1 : L'IA Générative</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0D1B2A; color: #E2E8F0; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0D1B2A 0%, #1B2A3B 100%); padding: 32px 24px 24px; text-align: center; border-bottom: 3px solid #00BFA6; }
+  .header .badge { display: inline-block; background: #00BFA6; color: #0D1B2A; font-size: 11px; font-weight: 800; padding: 4px 14px; border-radius: 20px; letter-spacing: 2px; margin-bottom: 12px; }
+  .header h1 { font-size: 26px; color: #fff; font-weight: 800; margin-bottom: 6px; }
+  .header p { font-size: 13px; color: #94A3B8; }
+
+  .progress-bar-wrap { background: #162032; height: 6px; }
+  .progress-bar { background: linear-gradient(90deg, #00BFA6, #4DD9C8); height: 6px; transition: width 0.5s ease; }
+
+  .quiz-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  .score-badge { background: #162032; border: 1px solid #1E3A5F; border-radius: 12px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .score-badge .label { font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+  .score-badge .value { font-size: 18px; color: #00BFA6; font-weight: 800; }
+
+  .question-card { background: #162032; border-radius: 16px; border: 1px solid #1E3A5F; padding: 24px; margin-bottom: 20px; transition: all 0.3s; }
+  .question-card.correct { border-color: #00BFA6; background: #0D2420; }
+  .question-card.wrong { border-color: #EF4444; background: #1A0D0D; }
+  .question-card.partial { border-color: #F59E0B; background: #1A1500; }
+
+  .q-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .q-num { background: #00BFA6; color: #0D1B2A; font-weight: 800; font-size: 13px; padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
+  .q-type { font-size: 11px; color: #64748B; background: #0D1B2A; padding: 3px 10px; border-radius: 6px; border: 1px solid #1E3A5F; }
+  .q-text { font-size: 15px; color: #E2E8F0; font-weight: 600; line-height: 1.5; flex: 1; }
+
+  /* QCM */
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .opt { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; border: 1.5px solid #1E3A5F; cursor: pointer; transition: all 0.2s; background: #0D1B2A; }
+  .opt:hover:not(.disabled) { border-color: #00BFA6; background: #0D2420; }
+  .opt.selected { border-color: #00BFA6; background: #0D2420; }
+  .opt.correct-ans { border-color: #00BFA6; background: #0D2420; }
+  .opt.wrong-ans { border-color: #EF4444; background: #1A0D0D; }
+  .opt.disabled { cursor: default; }
+  .opt-letter { width: 28px; height: 28px; border-radius: 6px; background: #1E3A5F; color: #94A3B8; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .opt.selected .opt-letter, .opt.correct-ans .opt-letter { background: #00BFA6; color: #0D1B2A; }
+  .opt.wrong-ans .opt-letter { background: #EF4444; color: #fff; }
+  .opt-text { font-size: 14px; color: #CBD5E1; }
+
+  /* Vrai/Faux */
+  .vf-wrap { display: flex; gap: 12px; }
+  .vf-btn { flex: 1; padding: 14px; border-radius: 10px; border: 1.5px solid #1E3A5F; cursor: pointer; font-size: 15px; font-weight: 700; text-align: center; background: #0D1B2A; color: #94A3B8; transition: all 0.2s; }
+  .vf-btn:hover:not(.disabled) { border-color: #00BFA6; color: #00BFA6; }
+  .vf-btn.selected { border-color: #00BFA6; color: #00BFA6; background: #0D2420; }
+  .vf-btn.correct-ans { border-color: #00BFA6; color: #00BFA6; background: #0D2420; }
+  .vf-btn.wrong-ans { border-color: #EF4444; color: #EF4444; background: #1A0D0D; }
+  .vf-btn.disabled { cursor: default; }
+
+  /* Texte à trous */
+  .blank { display: inline-block; border-bottom: 2px solid #00BFA6; min-width: 100px; padding: 2px 8px; margin: 0 4px; font-size: 14px; color: #E2E8F0; background: #0D1B2A; border-radius: 4px 4px 0 0; outline: none; }
+  .blank.correct-blank { border-color: #00BFA6; background: #0D2420; color: #4DD9C8; }
+  .blank.wrong-blank { border-color: #EF4444; background: #1A0D0D; color: #FCA5A5; }
+  .fill-text { font-size: 15px; color: #CBD5E1; line-height: 2.2; }
+
+  /* Feedback */
+  .feedback { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+  .feedback.show { display: flex; align-items: flex-start; gap: 8px; }
+  .feedback.correct { background: #0D2420; border: 1px solid #00BFA6; color: #4DD9C8; }
+  .feedback.wrong { background: #1A0D0D; border: 1px solid #EF4444; color: #FCA5A5; }
+  .feedback.partial { background: #1A1500; border: 1px solid #F59E0B; color: #FCD34D; }
+  .feedback-icon { font-size: 16px; flex-shrink: 0; }
+
+  /* Submit button */
+  .submit-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #00BFA6, #4DD9C8); color: #0D1B2A; font-size: 15px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; margin-top: 6px; transition: opacity 0.2s; }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* Results */
+  .results { background: #162032; border-radius: 20px; border: 2px solid #00BFA6; padding: 32px; text-align: center; margin-top: 20px; display: none; }
+  .results.show { display: block; }
+  .results-score { font-size: 60px; font-weight: 900; color: #00BFA6; line-height: 1; }
+  .results-label { font-size: 14px; color: #64748B; margin: 6px 0 20px; }
+  .results-msg { font-size: 18px; color: #E2E8F0; font-weight: 700; margin-bottom: 8px; }
+  .results-sub { font-size: 13px; color: #94A3B8; margin-bottom: 24px; }
+  .retry-btn { padding: 12px 32px; background: #0D1B2A; border: 2px solid #00BFA6; color: #00BFA6; font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+  .retry-btn:hover { background: #00BFA6; color: #0D1B2A; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">MODULE 1 — QUIZ</div>
+  <h1>L'IA Générative : Quiz de validation</h1>
+  <p>MOOC IA &amp; Enseignement &nbsp;|&nbsp; Master TNPEIC — ENSET Mohammedia &nbsp;|&nbsp; Pr. M. LAKHAL</p>
+</div>
+
+<div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+<div class="quiz-wrap">
+  <div class="score-badge">
+    <div><div class="label">Questions</div><div class="value" id="qCount">0 / 8</div></div>
+    <div><div class="label">Score</div><div class="value" id="scoreCount">0 pt</div></div>
+    <div><div class="label">Taux</div><div class="value" id="pctCount">0%</div></div>
+  </div>
+
+  <!-- Q1: QCM -->
+  <div class="question-card" id="qcard-0">
+    <div class="q-header">
+      <span class="q-num">Q1</span><span class="q-type">QCM</span>
+      <span class="q-text">Que signifie le sigle LLM dans le contexte de l'IA générative ?</span>
+    </div>
+    <div class="options" data-q="0" data-correct="2">
+      <div class="opt" onclick="selectOpt(this,0)"><span class="opt-letter">A</span><span class="opt-text">Large Learning Machine</span></div>
+      <div class="opt" onclick="selectOpt(this,0)"><span class="opt-letter">B</span><span class="opt-text">Logical Language Module</span></div>
+      <div class="opt" onclick="selectOpt(this,0)"><span class="opt-letter">C</span><span class="opt-text">Large Language Model</span></div>
+      <div class="opt" onclick="selectOpt(this,0)"><span class="opt-letter">D</span><span class="opt-text">Linear Learning Method</span></div>
+    </div>
+    <div class="feedback" id="fb-0"></div>
+    <button class="submit-btn" onclick="submitQ(0,'qcm')" id="btn-0">Valider</button>
+  </div>
+
+  <!-- Q2: V/F -->
+  <div class="question-card" id="qcard-1">
+    <div class="q-header">
+      <span class="q-num">Q2</span><span class="q-type">Vrai / Faux</span>
+      <span class="q-text">Un LLM comprend réellement le sens des mots comme un être humain.</span>
+    </div>
+    <div class="vf-wrap" data-q="1" data-correct="faux">
+      <div class="vf-btn" onclick="selectVF(this,1,'vrai')">✅ Vrai</div>
+      <div class="vf-btn" onclick="selectVF(this,1,'faux')">❌ Faux</div>
+    </div>
+    <div class="feedback" id="fb-1"></div>
+    <button class="submit-btn" onclick="submitQ(1,'vf')" id="btn-1">Valider</button>
+  </div>
+
+  <!-- Q3: QCM -->
+  <div class="question-card" id="qcard-2">
+    <div class="q-header">
+      <span class="q-num">Q3</span><span class="q-type">QCM</span>
+      <span class="q-text">Quel outil est spécialisé dans la génération d'images à partir de texte ?</span>
+    </div>
+    <div class="options" data-q="2" data-correct="1">
+      <div class="opt" onclick="selectOpt(this,2)"><span class="opt-letter">A</span><span class="opt-text">ChatGPT</span></div>
+      <div class="opt" onclick="selectOpt(this,2)"><span class="opt-letter">B</span><span class="opt-text">Midjourney</span></div>
+      <div class="opt" onclick="selectOpt(this,2)"><span class="opt-letter">C</span><span class="opt-text">NotebookLM</span></div>
+      <div class="opt" onclick="selectOpt(this,2)"><span class="opt-letter">D</span><span class="opt-text">Copilot</span></div>
+    </div>
+    <div class="feedback" id="fb-2"></div>
+    <button class="submit-btn" onclick="submitQ(2,'qcm')" id="btn-2">Valider</button>
+  </div>
+
+  <!-- Q4: Texte à trous -->
+  <div class="question-card" id="qcard-3">
+    <div class="q-header">
+      <span class="q-num">Q4</span><span class="q-type">Texte à trous</span>
+      <span class="q-text">Complétez les phrases suivantes :</span>
+    </div>
+    <p class="fill-text">
+      L'IA générative peut produire des informations fausses avec assurance : c'est ce qu'on appelle une
+      <input class="blank" id="blank-3a" placeholder="?" data-answer="hallucination">.
+      L'outil <input class="blank" id="blank-3b" placeholder="?" data-answer="chatgpt"> d'OpenAI est l'un des plus utilisés pour générer du texte.
+      L'entreprise française spécialisée dans les LLM open-source s'appelle <input class="blank" id="blank-3c" placeholder="?" data-answer="mistral">.
+    </p>
+    <div class="feedback" id="fb-3"></div>
+    <button class="submit-btn" onclick="submitQ(3,'fill')" id="btn-3">Valider</button>
+  </div>
+
+  <!-- Q5: V/F -->
+  <div class="question-card" id="qcard-4">
+    <div class="q-header">
+      <span class="q-num">Q5</span><span class="q-type">Vrai / Faux</span>
+      <span class="q-text">L'IA générative crée du contenu à partir de rien, sans données d'entraînement.</span>
+    </div>
+    <div class="vf-wrap" data-q="4" data-correct="faux">
+      <div class="vf-btn" onclick="selectVF(this,4,'vrai')">✅ Vrai</div>
+      <div class="vf-btn" onclick="selectVF(this,4,'faux')">❌ Faux</div>
+    </div>
+    <div class="feedback" id="fb-4"></div>
+    <button class="submit-btn" onclick="submitQ(4,'vf')" id="btn-4">Valider</button>
+  </div>
+
+  <!-- Q6: QCM -->
+  <div class="question-card" id="qcard-5">
+    <div class="q-header">
+      <span class="q-num">Q6</span><span class="q-type">QCM</span>
+      <span class="q-text">Quel est le principal risque éthique lié à l'utilisation de l'IA en enseignement ?</span>
+    </div>
+    <div class="options" data-q="5" data-correct="3">
+      <div class="opt" onclick="selectOpt(this,5)"><span class="opt-letter">A</span><span class="opt-text">L'IA est trop lente pour être utile</span></div>
+      <div class="opt" onclick="selectOpt(this,5)"><span class="opt-letter">B</span><span class="opt-text">L'IA ne parle pas en français</span></div>
+      <div class="opt" onclick="selectOpt(this,5)"><span class="opt-letter">C</span><span class="opt-text">L'IA coûte trop cher pour les écoles</span></div>
+      <div class="opt" onclick="selectOpt(this,5)"><span class="opt-letter">D</span><span class="opt-text">Biais, hallucinations, dépendance cognitive et protection des données</span></div>
+    </div>
+    <div class="feedback" id="fb-5"></div>
+    <button class="submit-btn" onclick="submitQ(5,'qcm')" id="btn-5">Valider</button>
+  </div>
+
+  <!-- Q7: V/F -->
+  <div class="question-card" id="qcard-6">
+    <div class="q-header">
+      <span class="q-num">Q7</span><span class="q-type">Vrai / Faux</span>
+      <span class="q-text">Midjourney est un outil de génération de texte comme ChatGPT.</span>
+    </div>
+    <div class="vf-wrap" data-q="6" data-correct="faux">
+      <div class="vf-btn" onclick="selectVF(this,6,'vrai')">✅ Vrai</div>
+      <div class="vf-btn" onclick="selectVF(this,6,'faux')">❌ Faux</div>
+    </div>
+    <div class="feedback" id="fb-6"></div>
+    <button class="submit-btn" onclick="submitQ(6,'vf')" id="btn-6">Valider</button>
+  </div>
+
+  <!-- Q8: QCM -->
+  <div class="question-card" id="qcard-7">
+    <div class="q-header">
+      <span class="q-num">Q8</span><span class="q-type">QCM</span>
+      <span class="q-text">Quel outil de Microsoft intègre l'IA directement dans Word et PowerPoint ?</span>
+    </div>
+    <div class="options" data-q="7" data-correct="0">
+      <div class="opt" onclick="selectOpt(this,7)"><span class="opt-letter">A</span><span class="opt-text">Copilot</span></div>
+      <div class="opt" onclick="selectOpt(this,7)"><span class="opt-letter">B</span><span class="opt-text">Gemini</span></div>
+      <div class="opt" onclick="selectOpt(this,7)"><span class="opt-letter">C</span><span class="opt-text">Mistral</span></div>
+      <div class="opt" onclick="selectOpt(this,7)"><span class="opt-letter">D</span><span class="opt-text">NotebookLM</span></div>
+    </div>
+    <div class="feedback" id="fb-7"></div>
+    <button class="submit-btn" onclick="submitQ(7,'qcm')" id="btn-7">Valider</button>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="results-score" id="finalScore">0/8</div>
+    <div class="results-label">points obtenus</div>
+    <div class="results-msg" id="finalMsg">—</div>
+    <div class="results-sub" id="finalSub">—</div>
+    <button class="retry-btn" onclick="retryQuiz()">🔄 Recommencer</button>
+  </div>
+</div>
+
+<script>
+const state = { answers: {}, score: 0, answered: 0, total: 8 };
+
+const feedbacks = {
+  0: { ok: "✅ Correct ! LLM = Large Language Model, soit 'Grand Modèle de Langage'.", ko: "❌ Incorrect. LLM signifie Large Language Model." },
+  1: { ok: "✅ Exact ! Un LLM prédit des mots selon des probabilités statistiques. Il ne 'comprend' pas le sens.", ko: "❌ Faux. Un LLM ne comprend pas vraiment le sens : il reconnaît des patterns et prédit le mot suivant." },
+  2: { ok: "✅ Bravo ! Midjourney est spécialisé dans la génération d'images artistiques.", ko: "❌ Incorrect. Midjourney est l'outil de génération d'images. ChatGPT génère du texte." },
+  3: { ok: "✅ Parfait ! Hallucination / ChatGPT / Mistral.", ko: "❌ Vérifiez vos réponses. Attendus : hallucination, ChatGPT, Mistral.", partial: "⚠️ Partiellement correct. Vérifiez les réponses : hallucination, ChatGPT, Mistral." },
+  4: { ok: "✅ Exact ! L'IA générative s'appuie sur des milliards de données d'entraînement.", ko: "❌ Faux. L'IA générative apprend à partir de données massives, elle ne crée pas à partir de rien." },
+  5: { ok: "✅ Correct ! Les principaux risques sont les biais, les hallucinations, la dépendance cognitive et la protection des données.", ko: "❌ Incorrect. Les risques réels incluent les biais algorithmiques, les hallucinations, la dépendance cognitive et les problèmes de données personnelles." },
+  6: { ok: "✅ Exact ! Midjourney génère des images, pas du texte.", ko: "❌ Faux. Midjourney est un générateur d'images (comme DALL·E), pas de texte." },
+  7: { ok: "✅ Bravo ! Copilot de Microsoft est intégré à toute la suite Office 365.", ko: "❌ Incorrect. C'est Copilot de Microsoft qui est intégré à Word, PowerPoint, Teams, etc." },
+};
+
+function selectOpt(el, qIdx) {
+  if (state.answers[qIdx] !== undefined) return;
+  const container = el.closest('.options');
+  container.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectVF(el, qIdx, val) {
+  if (state.answers[qIdx] !== undefined) return;
+  const container = el.closest('.vf-wrap');
+  container.querySelectorAll('.vf-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  el.dataset.chosen = val;
+}
+
+function submitQ(qIdx, type) {
+  let correct = false, partial = false;
+
+  if (type === 'qcm') {
+    const container = document.querySelector(`.options[data-q="${qIdx}"]`);
+    const correctIdx = parseInt(container.dataset.correct);
+    const opts = container.querySelectorAll('.opt');
+    const selected = container.querySelector('.opt.selected');
+    if (!selected) return;
+    const selectedIdx = Array.from(opts).indexOf(selected);
+    correct = selectedIdx === correctIdx;
+    opts.forEach((o, i) => {
+      o.classList.add('disabled');
+      if (i === correctIdx) o.classList.add('correct-ans');
+      else if (i === selectedIdx && !correct) o.classList.add('wrong-ans');
+    });
+  } else if (type === 'vf') {
+    const container = document.querySelector(`.vf-wrap[data-q="${qIdx}"]`);
+    const correctAns = container.dataset.correct;
+    const selected = container.querySelector('.vf-btn.selected');
+    if (!selected) return;
+    const chosen = selected.dataset.chosen;
+    correct = chosen === correctAns;
+    container.querySelectorAll('.vf-btn').forEach(b => {
+      b.classList.add('disabled');
+      if (b.dataset.chosen === correctAns) b.classList.add('correct-ans');
+      else if (b === selected && !correct) b.classList.add('wrong-ans');
+    });
+  } else if (type === 'fill') {
+    const blanks = document.querySelectorAll(`#qcard-${qIdx} .blank`);
+    let allCorrect = true, anyCorrect = false;
+    blanks.forEach(b => {
+      const userVal = b.value.trim().toLowerCase();
+      const expected = b.dataset.answer.toLowerCase();
+      if (userVal === expected) { b.classList.add('correct-blank'); anyCorrect = true; }
+      else { b.classList.add('wrong-blank'); allCorrect = false; }
+      b.disabled = true;
+    });
+    correct = allCorrect;
+    partial = !allCorrect && anyCorrect;
+  }
+
+  state.answers[qIdx] = correct || partial;
+  if (correct) state.score++;
+  else if (partial) state.score += 0.5;
+  state.answered++;
+
+  // Show feedback
+  const fb = document.getElementById(`fb-${qIdx}`);
+  fb.classList.add('show');
+  if (correct) {
+    fb.classList.add('correct');
+    fb.innerHTML = `<span class="feedback-icon">✅</span> ${feedbacks[qIdx].ok}`;
+    document.getElementById(`qcard-${qIdx}`).classList.add('correct');
+  } else if (partial) {
+    fb.classList.add('partial');
+    fb.innerHTML = `<span class="feedback-icon">⚠️</span> ${feedbacks[qIdx].partial || feedbacks[qIdx].ko}`;
+    document.getElementById(`qcard-${qIdx}`).classList.add('partial');
+  } else {
+    fb.classList.add('wrong');
+    fb.innerHTML = `<span class="feedback-icon">❌</span> ${feedbacks[qIdx].ko}`;
+    document.getElementById(`qcard-${qIdx}`).classList.add('wrong');
+  }
+
+  document.getElementById(`btn-${qIdx}`).disabled = true;
+  updateScore();
+
+  if (state.answered === state.total) setTimeout(showResults, 600);
+}
+
+function updateScore() {
+  const pct = Math.round((state.score / state.total) * 100);
+  document.getElementById('qCount').textContent = `${state.answered} / ${state.total}`;
+  document.getElementById('scoreCount').textContent = `${state.score} pt`;
+  document.getElementById('pctCount').textContent = `${pct}%`;
+  document.getElementById('progressBar').style.width = `${(state.answered / state.total) * 100}%`;
+}
+
+function showResults() {
+  const pct = Math.round((state.score / state.total) * 100);
+  document.getElementById('finalScore').textContent = `${state.score}/${state.total}`;
+  let msg, sub;
+  if (pct >= 87) { msg = "🏆 Excellent ! Vous maîtrisez très bien les bases de l'IA générative."; sub = "Vous êtes prêt(e) pour le Module 2."; }
+  else if (pct >= 70) { msg = "👍 Bien joué ! Quelques points à revoir mais les bases sont là."; sub = "Relisez la fiche synthèse pour les points manqués."; }
+  else if (pct >= 50) { msg = "📚 Pas mal, mais il faut consolider !"; sub = "Nous vous conseillons de revoir la capsule de cours avant de continuer."; }
+  else { msg = "🔁 Il faut retravailler ce module."; sub = "Recommencez la capsule de cours et relisez la fiche synthèse."; }
+  document.getElementById('finalMsg').textContent = msg;
+  document.getElementById('finalSub').textContent = sub;
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function retryQuiz() {
+  location.reload();
+}
+</script>
+</body>
+</html>
